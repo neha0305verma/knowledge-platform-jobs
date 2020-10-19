@@ -10,7 +10,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.CertificatePreProcessor
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 class CertificatePreProcessorStreamTask(config: CertificatePreProcessorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
@@ -34,7 +34,7 @@ class CertificatePreProcessorStreamTask(config: CertificatePreProcessorConfig, k
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
 object CertificatePreProcessorStreamTask {
-
+  var httpUtil = new HttpUtil
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {

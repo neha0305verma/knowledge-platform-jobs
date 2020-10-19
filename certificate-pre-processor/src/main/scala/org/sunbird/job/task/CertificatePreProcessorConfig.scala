@@ -23,6 +23,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
+  val dbReadCount = "db-read-count"
 
   // Consumers
   val certificatePreProcessorConsumer = "certificate-pre-processor-consumer"
@@ -33,4 +34,40 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
 
   // Producers
   val generateCertificateProducer = "generate-certificate-sink"
+
+  // Cassandra Configurations
+  val dbTable: String = config.getString("lms-cassandra.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
+  val dbHost: String = config.getString("lms-cassandra.host")
+  val dbPort: Int = config.getInt("lms-cassandra.port")
+  val userEnrolmentsPrimaryKey: List[String] = List("userid","courseid","batchid")
+
+  // Redis Configurations
+  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
+
+  // BaseUrl
+  val lmsBaseUrl = config.getString("lms.basePath")
+  val searchBaseUrl = config.getString("user.search.basePath")
+
+  // Constants
+  val courseBatch = "CourseBatch"
+  val userId = "userId"
+  val courseId = "courseId"
+  val batchId = "batchId"
+  val eData = "edata"
+  val action = "action"
+  val template = "template"
+  val generateCourseCertificate = "generate-course-certificate"
+  val reIssue = "reIssue"
+  val oldId = "oldId"
+  val certificates = "certificates"
+  val completedOn = "completedon"
+  val issuedDate = "issuedDate"
+  val issued_certificates = "issued_certificates"
+  val name = "name"
+  val identifier = "identifier"
+  val firstName = "firstName"
+  val lastName = "lastName"
+  val rootOrgId = "rootOrgId"
+  val orgId = "orgId"
 }
