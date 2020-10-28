@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
-import org.sunbird.job.domain.{CertificateData, CourseDetails, Data, OrgDetails, Related, UserDetails}
+import org.sunbird.job.domain.{CertificateData, CertificateGenerateEvent, CourseDetails, Data, EventObject, OrgDetails, Related, UserDetails}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
@@ -28,7 +28,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     setEventSvgData(edata)
     removeExtraData(edata)
     println("prepareGenerateEventEdata finished edata : " + edata)
-    edata
+//    edata
+    generateCertificateEvent(edata)
   }
 
   private def setIssuedCertificate(edata: util.Map[String, AnyRef]) {
@@ -103,4 +104,13 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     edata.remove(config.courseId)
     edata.remove(config.batchId)
   }
+
+    private def generateCertificateEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+      println("generateCertificateEvent called : ")
+     val certEvent = CertificateGenerateEvent(
+        edata = edata,
+        `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
+      )
+      gson.fromJson(gson.toJson(certEvent), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    }
 }

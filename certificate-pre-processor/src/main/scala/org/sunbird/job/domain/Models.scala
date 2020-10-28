@@ -10,7 +10,7 @@ case class CertificateGenerateEvent(eid: String = "BE_JOB_REQUEST",
                                     ets: Long = System.currentTimeMillis(),
                                     mid: String = s"LMS.${UUID.randomUUID().toString}",
                                     edata: util.Map[String, AnyRef],
-                                    `object`: util.Map[String, String],
+                                    `object`: EventObject,
                                     context: EventContext = EventContext(),
                                     actor: ActorObject = ActorObject())
 

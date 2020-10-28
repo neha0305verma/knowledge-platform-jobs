@@ -13,8 +13,6 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
-import scala.collection.JavaConverters._
-
 class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                              (implicit val stringTypeInfo: TypeInformation[String],
                               @transient var cassandraUtil: CassandraUtil = null)
@@ -92,23 +90,22 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
-                                      (implicit metrics: Metrics): CertificateGenerateEvent = {
+                                      (implicit metrics: Metrics): util.Map[String, AnyRef] = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
     val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     // generate certificate event edata
-    val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
-    println("generateCertificateEvent : eventEdata : " + eventEdata)
-    generateCertificateEvent(eventEdata)
+//    val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
+    println("generateCertificateEvent : eventEdata : " )
+//    generateCertificateEvent(eventEdata)
+    new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
   }
 
-  private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
-    println("generateCertificateEvent called : edata : " + edata)
-    println("generateCertificateEvent called : edata.get(config.userId).asInstanceOf[String] : " + edata.get(config.userId).asInstanceOf[String])
-    CertificateGenerateEvent(
-      edata = edata,
-      `object` = Map("id" -> edata.get(config.userId).asInstanceOf[String], "type" -> "GenerateCertificate").asJava
-//        EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
-    )
-  }
+//  private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
+//    println("generateCertificateEvent called : ")
+//    CertificateGenerateEvent(
+//      edata = edata,
+//      `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
+//    )
+//  }
 }
