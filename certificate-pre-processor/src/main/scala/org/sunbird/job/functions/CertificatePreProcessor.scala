@@ -66,6 +66,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
         usersToIssue.foreach(user => {
           val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+          println("generateCertificateEvent finished : certEvent : " + certEvent)
           println("final event send to next topic : " + gson.toJson(certEvent))
           context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
           logger.info("Certificate generate event successfully sent to next topic")
@@ -100,6 +101,8 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
+    println("generateCertificateEvent called : edata : " + edata)
+    println("generateCertificateEvent called : edata.get(config.userId).asInstanceOf[String] : " + edata.get(config.userId).asInstanceOf[String])
     CertificateGenerateEvent(
       edata = edata,
       `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
