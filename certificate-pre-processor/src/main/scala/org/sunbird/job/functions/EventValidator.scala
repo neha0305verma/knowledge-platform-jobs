@@ -5,6 +5,7 @@ import java.util
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.task.CertificatePreProcessorConfig
 
@@ -13,14 +14,14 @@ import scala.collection.JavaConverters._
 object EventValidator {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
+  private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
+
 
   def isValidEvent(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig): Boolean = {
     val action = edata.getOrDefault(config.action, "").asInstanceOf[String]
     val courseId = edata.getOrDefault(config.courseId, "").asInstanceOf[String]
     val batchId = edata.getOrDefault(config.batchId, "").asInstanceOf[String]
     val userIds = edata.getOrDefault(config.userIds, new util.ArrayList[String](){}).asInstanceOf[util.ArrayList[String]]
-    println(StringUtils.equalsIgnoreCase(action, config.issueCertificate) + " " + StringUtils.isNotBlank(courseId)
-      + " " + StringUtils.isNotBlank(batchId) + " " + CollectionUtils.isNotEmpty(userIds))
     StringUtils.equalsIgnoreCase(action, config.issueCertificate) &&
       StringUtils.isNotBlank(courseId) && StringUtils.isNotBlank(batchId) && CollectionUtils.isNotEmpty(userIds)
   }
@@ -64,6 +65,23 @@ object EventValidator {
       case "ne" => actualScore != score
       case "!=" => actualScore != score
       case _ => false
+    }
+  }
+
+  def validateTemplateUrl(certTemplate: util.Map[String, AnyRef], templateId: String, config: CertificatePreProcessorConfig)(implicit metrics: Metrics): Unit = {
+    val templateUrl = certTemplate.get(config.url).asInstanceOf[String]
+    if (StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
+      logger.info("prepareEventData : Certificate is not generated for batchId : " +
+        certTemplate.get(config.batchId).asInstanceOf[String] + ", courseId : " +
+        certTemplate.get(config.courseId).asInstanceOf[String] + " and userId : " +
+        certTemplate.get(config.userId).asInstanceOf[String] + ". TemplateId: " +
+        certTemplate.get(templateId).asInstanceOf[String] + " with Url: " + templateUrl + " is not supported.")
+      metrics.incCounter(config.skippedEventCount)
+      throw new Exception("Certificate is not generated for batchId : " +
+        certTemplate.get(config.batchId).asInstanceOf[String] + ", courseId : " +
+        certTemplate.get(config.courseId).asInstanceOf[String] + " and userId : " +
+        certTemplate.get(config.userId).asInstanceOf[String] + ". TemplateId: " +
+        certTemplate.get(templateId).asInstanceOf[String] + " with Url: " + templateUrl + " is not supported.")
     }
   }
 

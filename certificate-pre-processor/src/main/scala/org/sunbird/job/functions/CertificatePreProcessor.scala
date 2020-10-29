@@ -4,6 +4,7 @@ import java.util
 import java.util.UUID
 
 import com.google.gson.Gson
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -64,6 +65,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
       certTemplates.keySet().forEach(templateId => {
         //validate criteria
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
+        EventValidator.validateTemplateUrl(certTemplate, templateId, config)(metrics)
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
         //iterate over users and send to generate event method
         val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
