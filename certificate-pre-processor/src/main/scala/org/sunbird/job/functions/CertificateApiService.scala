@@ -19,21 +19,16 @@ object CertificateApiService {
   def getUsersFromUserCriteria(userCriteria: util.Map[String, AnyRef], userIds: List[String])(implicit config: CertificatePreProcessorConfig): List[String] = {
     val batchSize = 50
     val batchList = userIds.grouped(batchSize).toList
-    println("getUsersFromUserCriteria called : " + batchList)
     batchList.flatMap(batch => {
       val httpRequest = s"""{"request":{"filters":{"identifier":"${batch}, ${userCriteria}"},"fields":["identifier"]}}"""
       val httpResponse = httpUtil.post(config.learnerBasePath + config.userV1Search, httpRequest)
       if (httpResponse.status == 200) {
-        println("User search success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
         val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
         val contents = result.getOrDefault("content", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[util.Map[String, AnyRef]]]
 
-        println("getUsersFromUserCriteria : contents from search response : " + contents)
         val userList = contents.asScala.map(content => content.getOrDefault(config.identifier, "").asInstanceOf[String]).toList
         if (userList.isEmpty) throw new Exception("User not found for userCriteria : " + userCriteria)
-        println("getUsersFromUserCriteria : User found Batch : " + userList)
-
         userList
       } else throw new Exception("Search users for given criteria failed to fetch data : " + userCriteria + " " + httpResponse.status + " :: " + httpResponse.body)
     })
@@ -41,16 +36,13 @@ object CertificateApiService {
 
   def readContent(courseId: String, collectionCache: DataCache)
                  (implicit config: CertificatePreProcessorConfig, metrics: Metrics): util.Map[String, AnyRef] = {
-    println("readContent called : courseId : " + courseId)
     val courseData = collectionCache.getWithRetry(courseId)
     metrics.incCounter(config.cacheReadCount)
     if (courseData.nonEmpty) {
-      println("readContent cache called : courseData : " + courseId)
       courseData.asJava
     } else {
       val httpResponse = httpUtil.get(config.contentBaseUrl + config.contentV3Read + courseId)
       if (httpResponse.status == 200) {
-        println("Content read success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
         val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
         val content = result.getOrDefault("content", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
@@ -64,7 +56,6 @@ object CertificateApiService {
     val httpRequest = s"""{"request":{"filters":{"identifier":"${userId}"},"fields":["firstName", "lastName", "userName", "rootOrgName", "rootOrgId","maskedPhone"]}}"""
     val httpResponse = httpUtil.post(config.learnerBasePath + config.userV1Search, httpRequest)
     if (httpResponse.status == 200) {
-      println("User search success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
       val responseBody = result.getOrDefault("response", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
@@ -83,13 +74,16 @@ object CertificateApiService {
       println("Org read success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      println("Org read result: " + result)
       val keys = result.getOrDefault("keys", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      println("Org read keys: " + keys)
       if (MapUtils.isNotEmpty(keys) && CollectionUtils.isNotEmpty(keys.get("signKeys").asInstanceOf[util.List[String]])) {
         val signKeys = new util.HashMap[String, AnyRef]() {
           {
             put("id", keys.get("signKeys").asInstanceOf[util.List[String]].get(0))
           }
         }
+        println("Org read signKeys: " + signKeys)
         signKeys
       } else keys
     } else throw new Exception("Error while reading organisation  : " + rootOrgId + " " + httpResponse.status + " :: " + httpResponse.body)

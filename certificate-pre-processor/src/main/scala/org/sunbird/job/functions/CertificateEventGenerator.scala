@@ -4,6 +4,7 @@ import java.util
 
 import com.google.gson.Gson
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
 import org.sunbird.job.domain.{CertificateData, CourseDetails, Data, OrgDetails, Related, UserDetails}
@@ -17,6 +18,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
                                 @transient var cassandraUtil: CassandraUtil = null) {
 
   lazy private val gson = new Gson()
+  private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
+
 
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
     println("prepareGenerateEventEdata called edata : " + edata)
@@ -39,6 +42,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
     val certificates = issuedCertificates.asScala.filter((cert: util.Map[String, AnyRef]) => StringUtils.equalsIgnoreCase(cert.get(config.name).asInstanceOf[String], certTemplate.get(config.name).asInstanceOf[String])).toList
     if (certificates.nonEmpty && !edata.get(config.reIssue).asInstanceOf[Boolean]) {
+      logger.info("Certificate is available for batchId : " + edata.get(config.batchId) +
+        ", courseId : " + edata.get(config.courseId) + " and userId : " + edata.get(config.userId) + ". Not applied for reIssue.")
       throw new Exception("Certificate is available for batchId : " + edata.get(config.batchId) +
         ", courseId : " + edata.get(config.courseId) + " and userId : " + edata.get(config.userId) + ". Not applied for reIssue.")
     }

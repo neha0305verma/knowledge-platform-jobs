@@ -68,19 +68,23 @@ object EventValidator {
     }
   }
 
-  def validateTemplateUrl(certTemplate: util.Map[String, AnyRef], templateId: String, config: CertificatePreProcessorConfig)(implicit metrics: Metrics): Unit = {
-    val templateUrl = certTemplate.get(config.url).asInstanceOf[String]
+  def validateTemplateUrl(edata: util.Map[String, AnyRef], certTemplate: util.Map[String, AnyRef], templateId: String, config: CertificatePreProcessorConfig)(implicit metrics: Metrics): Unit = {
+    println("validateTemplateUrl edata : " + edata +" certTemplate : " + certTemplate)
+    val template = certTemplate.getOrDefault(config.issuer, new util.HashMap[String, AnyRef]()).asInstanceOf[util.Map[String, AnyRef]]
+    println("validateTemplateUrl template : " + edata +" certTemplate : " + certTemplate)
+    val templateUrl = template.get(config.url).asInstanceOf[String]
+    println("validateTemplateUrl templateUrl : " + edata +" certTemplate : " + certTemplate)
     if (StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
-      logger.info("prepareEventData : Certificate is not generated for batchId : " +
-        certTemplate.get(config.batchId).asInstanceOf[String] + ", courseId : " +
-        certTemplate.get(config.courseId).asInstanceOf[String] + " and userId : " +
-        certTemplate.get(config.userId).asInstanceOf[String] + ". TemplateId: " +
+      logger.info("validateTemplateUrl : Certificate is not generated for batchId : " +
+        edata.get(config.batchId).asInstanceOf[String] + ", courseId : " +
+        edata.get(config.courseId).asInstanceOf[String] + " and userIds : " +
+        edata.get(config.userIds).asInstanceOf[util.ArrayList[String]] + ". TemplateId: " +
         certTemplate.get(templateId).asInstanceOf[String] + " with Url: " + templateUrl + " is not supported.")
       metrics.incCounter(config.skippedEventCount)
       throw new Exception("Certificate is not generated for batchId : " +
-        certTemplate.get(config.batchId).asInstanceOf[String] + ", courseId : " +
-        certTemplate.get(config.courseId).asInstanceOf[String] + " and userId : " +
-        certTemplate.get(config.userId).asInstanceOf[String] + ". TemplateId: " +
+        edata.get(config.batchId).asInstanceOf[String] + ", courseId : " +
+        edata.get(config.courseId).asInstanceOf[String] + " and userIds : " +
+        edata.get(config.userIds).asInstanceOf[util.ArrayList[String]] + ". TemplateId: " +
         certTemplate.get(templateId).asInstanceOf[String] + " with Url: " + templateUrl + " is not supported.")
     }
   }

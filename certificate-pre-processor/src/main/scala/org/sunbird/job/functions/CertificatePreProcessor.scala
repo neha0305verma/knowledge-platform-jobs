@@ -65,13 +65,14 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
       certTemplates.keySet().forEach(templateId => {
         //validate criteria
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
-        EventValidator.validateTemplateUrl(certTemplate, templateId, config)(metrics)
+        EventValidator.validateTemplateUrl(edata, certTemplate, templateId, config)(metrics)
+        println("template is validated")
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
         //iterate over users and send to generate event method
         val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
         usersToIssue.foreach(user => {
           val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-          println("final event send to next topic : " + gson.toJson(certEvent))
+          println("final event send to next topic : " + certEvent)
           context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
           logger.info("Certificate generate event successfully sent to next topic")
           metrics.incCounter(config.successEventCount)
@@ -80,7 +81,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
     } catch {
       case ex: Exception => {
         context.output(config.failedEventOutputTag, gson.toJson(edata))
-        logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
+        logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex.getCause )
         metrics.incCounter(config.failedEventCount)
       }
     }
