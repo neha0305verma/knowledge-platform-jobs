@@ -3,7 +3,7 @@ package org.sunbird.job.functions
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
 import java.util
-import java.util.Date
+import java.util.{Date, UUID}
 import java.util.stream.Collectors
 
 import com.datastax.driver.core.Row
@@ -88,10 +88,11 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             logger.info("issued certificates in user-enrollment table  updated successfully")
             metrics.incCounter(config.dbUpdateCount)
             val certificateAuditEvent = generateAuditEvent(userId, courseId, batchId, certificate)
-            logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent.`object`.id + " with mid : " + certificateAuditEvent.mid)
-            context.output(config.auditEventOutputTag, gson.toJson(certificateAuditEvent))
+            logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent)
+            context.output(config.auditEventOutputTag, mapper.writeValueAsString(certificateAuditEvent))
             logger.info("pushAuditEvent: certificate audit event success")
             notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
+            createUserFeed(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn)
             metrics.incCounter(config.successEventCount)
           } else {
             metrics.incCounter(config.failedEventCount)
@@ -116,13 +117,29 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     .and(QueryBuilder.eq(config.batchId.toLowerCase, propertiesToSelect.get(config.batchId).asInstanceOf[String]))
 
 
+  private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
+    val req = s"""{"request":{"data":{"TrainingName":"${courseName}","message":"${config.userFeedMsg}","heldDate":"${dateFormatter.format(issuedOn)}"},"category":"${config.certificates}","priority":${config.priorityValue} ,"userId":"${userId}"}}"""
+    val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
+    try {
+      val response = PostCertificateProcessorStreamTask.httpUtil.post(url, req)
+      if (response.status == 200) {
+        logger.info("user feed response status {} :: {}", response.status, response.body)
+      }
+      else
+        logger.info("user feed  response status {} :: {}", response.status, response.body)
+    } catch {
+      case e: Exception =>
+        logger.error("Error while creating user feed : {}", userId + e)
+    }
+  }
+
   private def notifyUser(userId: String, courseName: String, issuedOn: Date, courseId: String, batchId: String, templateId: String)(implicit metrics: Metrics): Unit = {
     val userResponse: util.Map[String, AnyRef] = getUserDetails(userId) // call user Service
     val primaryFields = Map(config.courseId.toLowerCase() -> courseId, config.batchId.toLowerCase -> batchId)
     val row = getNotificationTemplates(primaryFields, metrics)
     if (userResponse != null) {
       val certTemplate = row.getMap(config.cert_templates, com.google.common.reflect.TypeToken.of(classOf[String]), TypeTokens.mapOf(classOf[String], classOf[String]))
-      val url = config.learnerServiceBaseUrl + "/v2/notification"
+      val url = config.learnerServiceBaseUrl + config.notificationEndPoint
       if (certTemplate != null && StringUtils.isNotBlank(templateId) && certTemplate.containsKey(templateId) && certTemplate.get(templateId).containsKey(config.notifyTemplate)) {
         logger.info("notification template is present in the cert-templates object {}", certTemplate.get(templateId).containsKey(config.notifyTemplate))
         val notifyTemplate = getNotificationTemplate(certTemplate.get(templateId))
@@ -266,13 +283,52 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     mapper.writeValueAsString(request)
   }
 
-  private def generateAuditEvent(userId: String, courseId: String, batchId: String, certificate: util.Map[String, String]): CertificateAuditEvent = {
-    CertificateAuditEvent(
-      actor = Actor(id = userId),
-      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
-      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
-      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
-    )
+  private def generateAuditEvent(userId: String, courseId: String, batchId: String, certificate: util.Map[String, String]): java.util.HashMap[String, AnyRef] = {
+    //    CertificateAuditEvent(
+    //      actor = Actor(id = userId),
+    //      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
+    //      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
+    //      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
+    //    )
+    new java.util.HashMap[String, AnyRef]() {{
+      put("eid", "BE_JOB_REQUEST")
+      put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
+      put("ver", "3.0")
+      put("actor", new java.util.HashMap[String, AnyRef]() {{
+        put(config.id, userId)
+        put("type", "User")
+      }})
+      put("context", new java.util.HashMap[String, AnyRef]() {{
+        put("channel", "in.sunbird")
+        put("env", "Course")
+        put("pdata", new java.util.HashMap[String, AnyRef]() {{
+          put("ver", "1.0")
+          put(config.id, "org.sunbird.learning.platform")
+          put("pid", "course-certificate-generator")
+        }})
+        put("cdata", new java.util.ArrayList[java.util.HashMap[String, AnyRef]]() {{
+          add(new java.util.HashMap[String, AnyRef]() {{
+            put(config.id, batchId)
+            put("type", config.courseBatch)
+          }})
+        }})
+      }})
+      put("edata", new java.util.HashMap[String, AnyRef]() {{
+        put("props", new java.util.ArrayList[String]() {{
+          add("certificates")
+        }})
+        put("type", "certificate-issued-svg")
+      }})
+      put("object", new java.util.HashMap[String, AnyRef]() {{
+        put(config.id, certificate.get(config.id))
+        put("type", "Certificate")
+        put("rollup", new java.util.HashMap[String,AnyRef]() {{
+          put(config.l1, courseId)
+        }})
+      }})
+    }
+   }
   }
 
 

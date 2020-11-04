@@ -32,6 +32,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
       eventEdata.remove(config.reIssue)
     eventEdata.remove(config.courseId)
     eventEdata.remove(config.batchId)
+    eventEdata.put(config.criteria, new util.HashMap[String, AnyRef](){{ put(config.narrative, eventEdata.getOrDefault(config.name, "Course Completion Certificate")) }})
     println("prepareGenerateEventEdata finished edata : " + eventEdata)
     eventEdata
   }
@@ -63,8 +64,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setUserData userResponse : " + userResponse.toString)
     val userDetails = UserDetails(data = new util.ArrayList[java.util.Map[String, AnyRef]]() {
       {
-        add(convertToMap(Data(edata.get(config.userId).asInstanceOf[String],
-          (userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim)))
+        add(convertToMap(Data((userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim,edata.get(config.userId).asInstanceOf[String])))
       }
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
