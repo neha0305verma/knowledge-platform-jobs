@@ -88,7 +88,8 @@ object CertificateApiService {
       println("readOrgKeys response : " + response)
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
       println("readOrgKeys result : " + result)
-      val keys = result.getOrDefault("keys", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      val responseMap = response.getOrDefault("response", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      val keys = responseMap.getOrDefault("keys", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
       println("readOrgKeys keys : " + keys)
       if (MapUtils.isNotEmpty(keys) && CollectionUtils.isNotEmpty(keys.get("signKeys").asInstanceOf[util.List[String]])) {
         val signKeys = new util.HashMap[String, AnyRef]() {
