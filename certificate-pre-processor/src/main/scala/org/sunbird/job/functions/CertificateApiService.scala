@@ -85,14 +85,18 @@ object CertificateApiService {
     if (httpResponse.status == 200) {
       println("Org read success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
+      println("readOrgKeys response : " + response)
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      println("readOrgKeys result : " + result)
       val keys = result.getOrDefault("keys", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      println("readOrgKeys keys : " + keys)
       if (MapUtils.isNotEmpty(keys) && CollectionUtils.isNotEmpty(keys.get("signKeys").asInstanceOf[util.List[String]])) {
         val signKeys = new util.HashMap[String, AnyRef]() {
           {
             put("id", keys.get("signKeys").asInstanceOf[util.List[String]].get(0))
           }
         }
+        println("readOrgKeys signKeys : " + signKeys)
         signKeys
       } else keys
     } else new util.HashMap[String, AnyRef]()
